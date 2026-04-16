@@ -1069,47 +1069,64 @@ const BgMusic = (() => {
   };
 })();
 
-// ── 鎖定畫面（連錯3次，鎖3分鐘）──
+// ── 鎖定畫面（連錯3次，鎖3分鐘，重整後仍有效）──
 function lockScreen() {
-  const overlay  = document.getElementById('lock-overlay');
-  const timerEl  = document.getElementById('lock-timer');
-  const input    = document.getElementById('answer-input');
-  const btn      = document.querySelector('#game-screen .btn');
+  const unlockAt = Date.now() + 3 * 60 * 1000;
+  localStorage.setItem('quizLockUntil', unlockAt);
+  applyLock(unlockAt);
+}
 
-  input.disabled = true;
-  btn.disabled   = true;
-  answerLocked   = true;
+function applyLock(unlockAt) {
+  const overlay = document.getElementById('lock-overlay');
+  const timerEl = document.getElementById('lock-timer');
+  const input   = document.getElementById('answer-input');
+  const btn     = document.querySelector('#game-screen .btn');
+
+  // 鎖住遊戲畫面輸入（如果已在遊戲中）
+  if (input) { input.disabled = true; input.classList.remove('input-wrong'); input.value = ''; }
+  if (btn)   { btn.disabled = true; }
+  answerLocked = true;
   hideFeedback();
-  input.classList.remove('input-wrong');
-  input.value = '';
-
   overlay.classList.add('show');
   BgMusic.fadeOut();
 
-  let remaining = 3 * 60;
-
   function fmt(s) {
+    s = Math.max(0, s);
     const m = Math.floor(s / 60);
     const sec = String(s % 60).padStart(2, '0');
     return `${m}:${sec}`;
   }
-  timerEl.textContent = fmt(remaining);
 
   clearInterval(lockTimer);
   lockTimer = setInterval(() => {
-    remaining--;
+    const remaining = Math.ceil((unlockAt - Date.now()) / 1000);
     timerEl.textContent = fmt(remaining);
     if (remaining <= 0) {
       clearInterval(lockTimer);
+      localStorage.removeItem('quizLockUntil');
       overlay.classList.remove('show');
-      input.disabled  = false;
-      btn.disabled    = false;
-      answerLocked    = false;
-      input.focus();
+      if (input) { input.disabled = false; input.focus(); }
+      if (btn)   { btn.disabled = false; }
+      answerLocked = false;
       BgMusic.start();
     }
-  }, 1000);
+  }, 500);
+
+  // 立即顯示剩餘時間
+  timerEl.textContent = fmt(Math.ceil((unlockAt - Date.now()) / 1000));
 }
+
+// ── 頁面載入時檢查鎖定狀態 ──
+(function checkLockOnLoad() {
+  const unlockAt = parseInt(localStorage.getItem('quizLockUntil') || '0', 10);
+  if (unlockAt && Date.now() < unlockAt) {
+    // 仍在鎖定期，切到遊戲畫面再套用鎖定
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display  = 'flex';
+    document.body.classList.add('in-game');
+    applyLock(unlockAt);
+  }
+})();
 
 function showFeedback(type, msg) {
   const fb = document.getElementById('feedback');
