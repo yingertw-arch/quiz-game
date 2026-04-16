@@ -830,7 +830,8 @@ function checkAnswer() {
     card.classList.add('shake');
 
     if (wrongStreak >= 3) {
-      wrongStreak = 0;
+      wrongStreak  = 0;
+      answerLocked = true;
       setTimeout(() => lockScreen(), 400);
     } else {
       showFeedback('wrong', `❌ 答錯了！再試一次吧（已答錯 ${wrongStreak}/3 次）`);
