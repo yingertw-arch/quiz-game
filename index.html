@@ -691,12 +691,22 @@ const MESSAGES = {
   16: { place: '畢業冊',   text: '這是最後的線索，翻開它，青春永不結案！' },
 };
 
-let currentLevel = 0;
-let answerLocked  = false;
+let currentLevel   = 0;
+let shuffledLevels = [];
+let answerLocked   = false;
 let countdownTimer = null;
-let confettiAnim  = null;
-let wrongStreak   = 0;
-let lockTimer     = null;
+let confettiAnim   = null;
+let wrongStreak    = 0;
+let lockTimer      = null;
+
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 // ── 星星背景生成 ──
 (function createStars() {
@@ -736,6 +746,7 @@ function doLogin() {
   const matched = ACCOUNTS.some(a => a.username === u && a.password === p);
   if (matched) {
     err.style.display = 'none';
+    shuffledLevels = shuffleArray(LEVELS);
     switchScreen('game');
     loadLevel(0);
   } else {
@@ -772,10 +783,10 @@ function switchScreen(name) {
 function loadLevel(idx) {
   currentLevel  = idx;
   answerLocked  = false;
-  const lv = LEVELS[idx];
+  const lv = shuffledLevels[idx];
 
   // 進度條
-  document.getElementById('progress-bar').style.width = (idx / LEVELS.length * 100) + '%';
+  document.getElementById('progress-bar').style.width = (idx / shuffledLevels.length * 100) + '%';
   document.getElementById('level-num').textContent = idx + 1;
 
   // 圖片
@@ -809,7 +820,7 @@ function checkAnswer() {
   }
 
   const userAns    = parseInt(val, 10);
-  const correctAns = LEVELS[currentLevel].answer;
+  const correctAns = shuffledLevels[currentLevel].answer;
 
   if (userAns === correctAns) {
     // 答對：重置連錯計數
@@ -847,7 +858,7 @@ function checkAnswer() {
 // ── 恭喜彈出畫面（5秒倒數）──
 function showCongrats(levelIdx) {
   const c      = CONGRATS[levelIdx % CONGRATS.length];
-  const ans    = LEVELS[levelIdx].answer;
+  const ans    = shuffledLevels[levelIdx].answer;
   const loc    = MESSAGES[ans];
 
   document.getElementById('congrats-emoji').textContent = c.emoji;
@@ -874,7 +885,7 @@ function showCongrats(levelIdx) {
       clearInterval(countdownTimer);
       stopConfetti();
       overlay.classList.remove('show');
-      if (currentLevel + 1 >= LEVELS.length) {
+      if (currentLevel + 1 >= shuffledLevels.length) {
         switchScreen('win');
         launchFireworks();
       } else {
